@@ -27,12 +27,14 @@
 using namespace std;
 
 void myCB(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data) { 
-	printf("cb clled\n");
+  	if ((*pkt)->address.addr16_enabled) {
+    		printf("src addr 16-bit (0x%02X%02X)\n", (*pkt)->address.addr16[0], (*pkt)->address.addr16[1]);
+ 	}
 	fflush(stdout);
 	if ((*pkt)->dataLen > 0) {
 		printf("rx: [%s]\n", (*pkt)->data);
-		if (!strncmp((const char*)((*pkt)->data), "Hello?",7)) {
-			xbee_conTx(con, NULL, "Hi!");
+		if (!strncmp((const char*)((*pkt)->data), "Data",7)) {
+			xbee_conTx(con, NULL, "GPS Position");
 		}
 	}
 }
@@ -66,7 +68,6 @@ int main(int argc, char * argv[]) {
     	if(cl.search(2, "--help", "-h") ) print_help(cl[0]);
 
     	// read arguments one by one on the command line
-    	//  (lazy command line parsing)
     	//const double Alpha = cl.follow(0.,    "--alpha");   // [rad]
     	//const int    Beta  = cl.follow(256,   "--beta"); // [1/s]
     	cl.init_multiple_occurrence();
@@ -91,8 +92,8 @@ int main(int argc, char * argv[]) {
 
 	memset(&address, 0, sizeof(address));
 	address.addr16_enabled = 1;
-	address.addr16[0] = 0xFF;
-	address.addr16[1] = 0xFF;
+	address.addr16[0] = 0x00;
+	address.addr16[1] = 0x01;
 
 	if ((ret = xbee_conNew(xbee, &con, "16-bit Data", &address)) != XBEE_ENONE) {
 		xbee_log(xbee, -1, "xbee_conNew() returned: %d (%s)", ret, xbee_errorToStr(ret));

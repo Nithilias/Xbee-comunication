@@ -23,12 +23,7 @@
 #include <string.h>
 
 #include <xbee.h>
- possible. " << endl;
-    cout << "--size, --sz, -s number1 number2" << endl;
-    cout << "       specify x and y sizes" << endl;
-    cout << endl;
-    exit(0);
-}
+
 void myCB(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data) {
 	if ((*pkt)->dataLen > 0) {
 		printf("rx: [%s]\n", (*pkt)->data);
@@ -46,18 +41,18 @@ int main(void) {
 		printf("ret: %d (%s)\n", ret, xbee_errorToStr(ret));
 		return ret;
 	}
- possible. " << endl;
-    cout << "--size, --sz, -s number1 number2" << endl;
-    cout << "       specify x and y sizes" << endl;
-    cout << endl;
-    exit(0);
-}
-	memset(&address, 0, sizeof(address));
-	address.addr16_enabled = 1;
-	address.addr16[0] = 0x00;
-	address.addr16[1] = 0x02;
 
-	if ((ret = xbee_conNew(xbee, &con, "16-bit Data", &address)) != XBEE_ENONE) {
+	memset(&address, 0, sizeof(address));
+	address.addr64_enabled = 1;
+	address.addr64[0] = 0x00;
+	address.addr64[1] = 0x13;
+	address.addr64[2] = 0xA2;
+	address.addr64[3] = 0x00;
+	address.addr64[4] = 0x40;
+	address.addr64[5] = 0x08;
+	address.addr64[6] = 0x18;
+	address.addr64[7] = 0x26;
+	if ((ret = xbee_conNew(xbee, &con, "64-bit Data", &address)) != XBEE_ENONE) {
 		xbee_log(xbee, -1, "xbee_conNew() returned: %d (%s)", ret, xbee_errorToStr(ret));
 		return ret;
 	}
