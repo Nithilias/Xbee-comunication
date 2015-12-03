@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string>
 #include <xbee.h>
+#include <data.h>
 #include <iostream>
 #include <GetPot>
 using namespace std;
@@ -31,14 +32,46 @@ void myCB(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void *
     		printf("src addr 16-bit (0x%02X%02X)\n", (*pkt)->address.addr16[0], (*pkt)->address.addr16[1]);
  	}
 	fflush(stdout);
-	if ((*pkt)->dataLen > 0) {
-		printf("rx: [%s]\n", (*pkt)->data);
-		if (!strncmp((const char*)((*pkt)->data), "Data",7)) {
-			xbee_conTx(con, NULL, "GPS Position");
+	if ((*pkt)->dataLen > sizeof(Header)) {
+		Header header; 
+		memcpy(&header, (*pkt)->data, sizeof(Header));
+		printf("Header: %d ", (int)header.type);
+
+	  if (header.type == DATA_GPS )
+	    {
+	      if((*pkt)->dataLen == sizeof(Header)+sizeof(GPS_pkt))
+		{
+		  GPS_pkt packet;
+		  memcpy(&packet, (*pkt)->data + sizeof(Header), sizeof(GPS_pkt));
+		  printf("rx:  ");
+		  print_GPS(packet);
 		}
+	    }
+
+	  if (header.type == DATA_ROUTING )
+	    {
+	      if((*pkt)->dataLen == sizeof(Header)+sizeof(Routing_pkt))
+		{
+		  Routing_pkt packet;
+		  memcpy(&packet, (*pkt)->data + sizeof(Header), sizeof(Routing_pkt));
+		  printf("rx: ");
+		  print_Routing(packet);
+		}
+	    }
+
+	  if (header.type == DATA_PLAN )
+	    {
+	      if((*pkt)->dataLen == sizeof(Header)+sizeof(Plan_pkt))
+		{
+		  Plan_pkt packet;
+		  memcpy(&packet, (*pkt)->data + sizeof(Header), sizeof(Plan_pkt));
+		  printf("rx: ");
+		  print_Plan(packet);
+		}
+	    }
+
 	}
 }
-
 
 void print_help(const string Application)
 {

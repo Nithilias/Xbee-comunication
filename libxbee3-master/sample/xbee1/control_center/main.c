@@ -22,10 +22,12 @@
 #include <stdlib.h>
 #include <string>
 #include <xbee.h>
+#include <data.h>	// include the structure for the data packets
 #include <iostream>
 #include <GetPot>
 using namespace std;
 
+// Function to print Help if need be
 void print_help(const string Application)
 {
     cout << endl;
@@ -47,6 +49,7 @@ void print_help(const string Application)
     exit(0);
 }
 
+// Function that allows to receive the data and print it.
 void myCB(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data) {
   if ((*pkt)->address.addr16_enabled) {
     printf("src addr 16-bit (0x%02X%02X)\n", 
@@ -58,6 +61,15 @@ void myCB(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void *
   }
 }
 
+// Function to initialize data packets
+void initializeGPS(GPS_pkt *data){	
+	data->latitude = 1.0;
+	data->longitude = 2.0;
+	data->altitude = 3.0;
+	data->dataRate = 10; 
+}
+
+/////////////// Beginning of Main program //////////////////
 int main(int argc, char * argv[]) {
 	
 	// Simple Command line parser
@@ -68,22 +80,28 @@ int main(int argc, char * argv[]) {
    	const int     baudrate    = cl.follow(57600, "--baud"); 
     	cl.enable_loop();
   
-	// Structure of the Data
-	struct __attribute__((__packed__)) mystruct_A {
-    		char type;
-    		float lattitude;
-    		float longitude;
-		float altitude;
-		int dataRate;
-	};
-
+	// Initialize structures
 	void *d;
 	struct xbee *xbee;
 	struct xbee_con *con;
 	struct xbee_conAddress address;
 	xbee_err ret;
 	struct xbee_conSettings settings;
-	
+	unsigned char buf[128];
+	size_t buflen; 
+
+	// Initialize data structure	
+	Header hdr;	
+
+	GPS_pkt gps; 	
+	initializeGPS(&gps);
+
+	Routing_pkt route;
+	route.route=12345;
+
+	Plan_pkt plan;
+	plan.plan = 9876543;
+
 	// Set up Communication
 	if ((ret = xbee_setup(&xbee, "xbee1", xbeeDev.c_str(), baudrate)) != XBEE_ENONE) {
 		printf("ret: %d (%s)\n", ret, xbee_errorToStr(ret));
@@ -114,10 +132,35 @@ int main(int argc, char * argv[]) {
 		xbee_log(xbee, -1, "xbee_conCallbackSet() returned: %d", ret);
 		return ret;
 	}
+	int cnt=0;
 
 	// Broadcast "Data"
 	for (;;) {
-		if ((ret = xbee_conTx(con, NULL, "Data")) != XBEE_ENONE) {
+		if(cnt%2)
+		{
+			hdr.type = DATA_GPS;
+			memcpy(buf, &hdr, sizeof(Header));
+			memcpy(buf+sizeof(Header), &gps, sizeof(GPS_pkt));
+			buflen = sizeof(Header) + sizeof(GPS_pkt);
+		}
+		else if (cnt%3)
+		{
+			hdr.type = DATA_ROUTING;
+			memcpy(buf, &hdr, sizeof(Header));
+			memcpy(buf+sizeof(Header), &route, sizeof(Routing_pkt));
+			buflen = sizeof(Header) + sizeof(Routing_pkt);
+		}
+		else{
+			hdr.type = DATA_PLAN;
+			memcpy(buf, &hdr, sizeof(Header));
+			memcpy(buf+sizeof(Header), &plan, sizeof(Plan_pkt));
+			buflen = sizeof(Header) + sizeof(Plan_pkt);
+
+		}
+		cnt++;
+		
+		printf("SENDING %lu bytes\n", buflen);
+		if ((ret = xbee_connTx(con, NULL, buf, buflen )) != XBEE_ENONE) {
 			xbee_log(xbee, -1, "xbee_conTx() returned: %d", ret);
 			usleep(2000000);
 			continue;
