@@ -60,17 +60,6 @@ void myCB(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void *
 		memcpy(&header, (*pkt)->data, sizeof(Header));
 		printf("Header: %d ", (int)header.type);
 
-	  if (header.type == DATA_GPS )
-	    {
-	      if((*pkt)->dataLen == sizeof(Header)+sizeof(GPS_pkt))
-		{
-		  GPS_pkt packet;
-		  memcpy(&packet, (*pkt)->data + sizeof(Header), sizeof(GPS_pkt));
-		  printf("rx:  ");
-		  print_GPS(packet);
-		}
-	    }
-
 	  if (header.type == DATA_ROUTING )
 	    {
 	      if((*pkt)->dataLen == sizeof(Header)+sizeof(Routing_pkt))

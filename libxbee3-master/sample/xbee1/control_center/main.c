@@ -73,14 +73,6 @@ void myCB(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void *
 	}
 }
 
-// Function to initialize GPS packets
-void initializeGPS(GPS_pkt *data){	
-	data->latitude = 1.0;
-	data->longitude = 2.0;
-	data->altitude = 3.0;
-	data->dataRate = 10; 
-}
-
 // Function to initialize Routing packets
 void initializeROUTING(Routing_pkt *data){	
 	data->route = 12345;
@@ -114,8 +106,6 @@ int main(int argc, char * argv[]) {
 
 	// Initialize data structure	
 	Header hdr;	
-	GPS_pkt gps; 	
-	initializeGPS(&gps);
 
 	Routing_pkt route;
 	initializeROUTING(&route);
@@ -159,13 +149,6 @@ int main(int argc, char * argv[]) {
 	for (;;) {
 		if(cnt%2)
 		{
-			hdr.type = DATA_GPS;
-			memcpy(buf, &hdr, sizeof(Header));
-			memcpy(buf+sizeof(Header), &gps, sizeof(GPS_pkt));
-			buflen = sizeof(Header) + sizeof(GPS_pkt);
-		}
-		else if (cnt%3)
-		{
 			hdr.type = DATA_ROUTING;
 			memcpy(buf, &hdr, sizeof(Header));
 			memcpy(buf+sizeof(Header), &route, sizeof(Routing_pkt));
@@ -176,7 +159,6 @@ int main(int argc, char * argv[]) {
 			memcpy(buf, &hdr, sizeof(Header));
 			memcpy(buf+sizeof(Header), &plan, sizeof(Plan_pkt));
 			buflen = sizeof(Header) + sizeof(Plan_pkt);
-
 		}
 		cnt++;
 		
@@ -186,7 +168,6 @@ int main(int argc, char * argv[]) {
 			usleep(2000000);
 			continue;
 		}
-
 		usleep(1000000);
 	}
 
