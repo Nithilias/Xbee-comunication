@@ -50,23 +50,45 @@ void print_help(const string Application)
 }
 
 // Function that allows to receive the data and print it.
-void myCB(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data) {
-  if ((*pkt)->address.addr16_enabled) {
-    printf("src addr 16-bit (0x%02X%02X)\n", 
-	   (*pkt)->address.addr16[0], (*pkt)->address.addr16[1]);
-  }
-  
-  if ((*pkt)->dataLen > 0) {
-    printf("rx: [%s]\n", (*pkt)->data);
-  }
+void myCB(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data) {	
+	if ((*pkt)->address.addr16_enabled) {
+    		printf("src addr 16-bit (0x%02X%02X)\n", 
+	   	(*pkt)->address.addr16[0], (*pkt)->address.addr16[1]);
+  	}
+  	fflush(stdout);
+  	if ((*pkt)->dataLen > sizeof(Header)) {
+		Header header; 
+		memcpy(&header, (*pkt)->data, sizeof(Header));
+		printf("Header: %d ", (int)header.type);	
+  		if (header.type == DATA_GPS )
+	    	{
+	      		if((*pkt)->dataLen == sizeof(Header)+sizeof(GPS_pkt))
+			{
+		  		GPS_pkt packet;
+		  		memcpy(&packet, (*pkt)->data + sizeof(Header), sizeof(GPS_pkt));
+		  		printf("rx:  ");
+		  		print_GPS(packet);
+			}
+	    	}
+	}
 }
 
-// Function to initialize data packets
+// Function to initialize GPS packets
 void initializeGPS(GPS_pkt *data){	
 	data->latitude = 1.0;
 	data->longitude = 2.0;
 	data->altitude = 3.0;
 	data->dataRate = 10; 
+}
+
+// Function to initialize Routing packets
+void initializeROUTING(Routing_pkt *data){	
+	data->route = 12345;
+}
+
+// Function to initialize Plan packets
+void initializePLAN(Plan_pkt *data){	
+	data->plan = 9876543; 
 }
 
 /////////////// Beginning of Main program //////////////////
@@ -92,15 +114,14 @@ int main(int argc, char * argv[]) {
 
 	// Initialize data structure	
 	Header hdr;	
-
 	GPS_pkt gps; 	
 	initializeGPS(&gps);
 
 	Routing_pkt route;
-	route.route=12345;
+	initializeROUTING(&route);
 
 	Plan_pkt plan;
-	plan.plan = 9876543;
+	initializePLAN(&plan);
 
 	// Set up Communication
 	if ((ret = xbee_setup(&xbee, "xbee1", xbeeDev.c_str(), baudrate)) != XBEE_ENONE) {

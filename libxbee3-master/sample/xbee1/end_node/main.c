@@ -22,13 +22,36 @@
 #include <stdlib.h>
 #include <string>
 #include <xbee.h>
-#include <data.h>
+#include <data.h> 	// include the structure for the data packets
 #include <iostream>
 #include <GetPot>
 using namespace std;
 
-void myCB(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data) { 
-  	if ((*pkt)->address.addr16_enabled) {
+// Function to print Help if need be
+void print_help(const string Application)
+{
+    cout << endl;
+    cout << "Example to use follow()-functions:" << endl << endl;
+    cout << "USAGE:" << endl;
+    cout << "--help, -h" << endl;
+    cout << "       get some help about this program." << endl;
+    cout << "--alpha number" << endl;
+    cout << "       specify the value of alpha given as number." << endl;
+    cout << "--beta number" << endl;
+    cout << "       specify the value of beta given as number." << endl;
+    cout << "--user string number" << endl;
+    cout << "       specify user name as string and id as number" << endl;
+    cout << "       (default = 'You' and '0x42')." << endl;
+    cout << "       multiple users possible. " << endl;
+    cout << "--size, --sz, -s number1 number2" << endl;
+    cout << "       specify x and y sizes" << endl;
+    cout << endl;
+    exit(0);
+}
+
+// Function that allows to receive the data and print it.
+void myCB(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data) {   	
+	if ((*pkt)->address.addr16_enabled) {
     		printf("src addr 16-bit (0x%02X%02X)\n", (*pkt)->address.addr16[0], (*pkt)->address.addr16[1]);
  	}
 	fflush(stdout);
@@ -69,60 +92,50 @@ void myCB(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void *
 		  print_Plan(packet);
 		}
 	    }
-
 	}
 }
 
-void print_help(const string Application)
-{
-    cout << endl;
-    cout << "Example to use follow()-functions:" << endl << endl;
-    cout << "USAGE:" << endl;
-    cout << "--help, -h" << endl;
-    cout << "       get some help about this program." << endl;
-    cout << "--alpha number" << endl;
-    cout << "       specify the value of alpha given as number." << endl;
-    cout << "--beta number" << endl;
-    cout << "       specify the value of beta given as number." << endl;
-    cout << "--user string number" << endl;
-    cout << "       specify user name as string and id as number" << endl;
-    cout << "       (default = 'You' and '0x42')." << endl;
-    cout << "       multiple users possible. " << endl;
-    cout << "--size, --sz, -s number1 number2" << endl;
-    cout << "       specify x and y sizes" << endl;
-    cout << endl;
-    exit(0);
+// Function to initialize data packets
+void initializeGPS(GPS_pkt *data){	
+	data->latitude = 15.0;
+	data->longitude = 26.0;
+	data->altitude = 37.0;
+	data->dataRate = 7777; 
 }
 
-
+/////////////// Beginning of Main program //////////////////
 int main(int argc, char * argv[]) {
 	
+	// Simple Command line parser
     	GetPot   cl(argc, argv);
     	if(cl.search(2, "--help", "-h") ) print_help(cl[0]);
-
-    	// read arguments one by one on the command line
-    	//const double Alpha = cl.follow(0.,    "--alpha");   // [rad]
-    	//const int    Beta  = cl.follow(256,   "--beta"); // [1/s]
     	cl.init_multiple_occurrence();
     	const string  xbeeDev  = cl.follow("/dev/ttyUSB1", "--dev");      
    	const int     baudrate    = cl.follow(57600, "--baud"); 
-   	//const string  User2 = cl.follow("me too", "--user"); // second user specified ?
-   	//const int     No2   = cl.next(0x43); 
     	cl.enable_loop();
-    	//const double  XSz   = cl.follow(0., 3, "--size", "--sz", "-s"); // [cm]
-    	//const double  YSz   = cl.next(0.);     
-
+    
+	// Initialize structures
 	void *d;
 	struct xbee *xbee;
 	struct xbee_con *con;
 	struct xbee_conAddress address;
 	xbee_err ret;
+	struct xbee_conSettings settings;
+	unsigned char buf[128];
+	size_t buflen = 0; 
 
+	// Initialize data structure	
+	Header hdr;	
+
+	GPS_pkt gps; 	
+	initializeGPS(&gps);
+
+	// Set up Communication
 	if ((ret = xbee_setup(&xbee, "xbee1", xbeeDev.c_str(), baudrate)) != XBEE_ENONE) {
 		printf("ret: %d (%s)\n", ret, xbee_errorToStr(ret));
 		return ret;
 	}
-
+	// Set destination address: 0x0001 for Control Center COM
 	memset(&address, 0, sizeof(address));
 	address.addr16_enabled = 1;
 	address.addr16[0] = 0x00;
@@ -138,20 +151,38 @@ int main(int argc, char * argv[]) {
 		return ret;
 	}
 
+	
 	if ((ret = xbee_conCallbackSet(con, myCB, NULL)) != XBEE_ENONE) {
 		xbee_log(xbee, -1, "xbee_conCallbackSet() returned: %d", ret);
 		return ret;
 	}
 
+	int cnt=0;
+
+	// Send "GPS Position"
 	for (;;) {
+		printf("SENDING %lu bytes\n", buflen);		
+		hdr.type = DATA_GPS;
+		memcpy(buf, &hdr, sizeof(Header));
+		memcpy(buf+sizeof(Header), &gps, sizeof(GPS_pkt));
+		buflen = sizeof(Header) + sizeof(GPS_pkt);
+		
+		cnt++;
+		if ((ret = xbee_connTx(con, NULL, buf, buflen )) != XBEE_ENONE) {
+			xbee_log(xbee, -1, "xbee_conTx() returned: %d", ret);
+			usleep(2000000);
+			continue;
+		}
 		usleep(1000000);
 	}
 
+	// End connection
 	if ((ret = xbee_conEnd(con)) != XBEE_ENONE) {
 		xbee_log(xbee, -1, "xbee_conEnd() returned: %d", ret);
 		return ret;
 	}
 
+	// Shutdown Xbee
 	xbee_shutdown(xbee);
 
 	return 0;

@@ -1,6 +1,5 @@
 typedef struct Packet Packet;
 
-
 static const char DATA_GPS = 1;
 static const char DATA_ROUTING = 2;
 static const char DATA_PLAN = 3;
@@ -26,6 +25,7 @@ struct __attribute__((__packed__)) Header {
 };
 
 
+// Functions Of the Structures
 void print_GPS(GPS_pkt &gps)
 {
   printf("lat: %f lon: %f alt: %f rate: %d\n",
