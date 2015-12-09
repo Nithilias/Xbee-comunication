@@ -126,7 +126,6 @@ int main(int argc, char * argv[]) {
 
 	// Initialize data structure	
 	Header hdr;	
-
 	GPS_pkt gps; 	
 	initializeGPS(&gps);
 
@@ -161,13 +160,14 @@ int main(int argc, char * argv[]) {
 
 	// Send "GPS Position"
 	for (;;) {
-		printf("SENDING %lu bytes\n", buflen);		
+	
 		hdr.type = DATA_GPS;
 		memcpy(buf, &hdr, sizeof(Header));
 		memcpy(buf+sizeof(Header), &gps, sizeof(GPS_pkt));
 		buflen = sizeof(Header) + sizeof(GPS_pkt);
-		
 		cnt++;
+
+		printf("SENDING %lu bytes\n", buflen);	
 		if ((ret = xbee_connTx(con, NULL, buf, buflen )) != XBEE_ENONE) {
 			xbee_log(xbee, -1, "xbee_conTx() returned: %d", ret);
 			usleep(2000000);
